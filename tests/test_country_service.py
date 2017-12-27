@@ -1,46 +1,32 @@
 import unittest
 
-from lib.client import ServiceClient
-# from services.country import CountryService
+from ddt import file_data, ddt, unpack
+from tests.test_base import BaseTestCase
 
 
-class BaseTestCase(unittest.TestCase):
-
-    SERVICE_URL = "http://www.webservicex.net/country.asmx?wsdl"
-
-    @classmethod
-    def setUpClass(cls):
-        super(BaseTestCase, cls).setUpClass()
-        # cls.service = CountryService(cls.SERVICE_URL)
-        cls.service = ServiceClient(cls.SERVICE_URL)
-
-
+@ddt
 class TestClass(BaseTestCase):
-    def test_qatar_scenario(self):
-        test_data = {
-            "country name": "Qatar",
-            "country code": "qa",
-            "country currency": "Rial",
-            "currency code": "QAR",
-        }
-
+    @unpack
+    @file_data('test_data.json')
+    def test_qatar_scenario(self, country_name, country_code, country_currency, currency_code):
         # step1 getting country by its code
-        country_info = self.service.GetCountryByCountryCode(test_data['country code'])
-        self.assertEqual(test_data['country name'], country_info['name'])
+        country = self.service.get_country_by_country_code(country_code)
+        self.assertEqual(country_name, country.name)
 
         # step2 getting country currency by country
-        country_currency_info = self.service.GetCurrencyByCountry(country_info['name'])
-        self.assertEqual(test_data['country currency'], country_currency_info['Currency'])
-        # print(country_currency_info)
+        currency = self.service.get_currency_by_country(country.name)
+        self.assertEqual(currency_code, currency.CurrencyCode)
 
         # step3 getting country by currency code
-        country_info = self.service.GetCountryByCurrencyCode(country_currency_info['CurrencyCode'])
-        self.assertEqual(test_data['country name'], country_info['Name'])
+        country = self.service.get_country_by_currency_code(currency.CurrencyCode)
+        self.assertEqual(country_currency, country.Currency)
 
         # step4 getting currency code by currency name
-        currency_code = self.service.GetCurrencyCodeByCurrencyName(country_info['Currency'])
-        self.assertIn('CurrencyCode', currency_code)
+        currency = self.service.get_currency_code_by_currency_name(currency.Currency)
+        self.assertIn(currency_code, currency.CurrencyCode)
 
 
 if __name__ == "__main__":
-    test_suite = unittest.TestLoader().loadTestsFromTestCase(TestClass)
+    test_suites = unittest.TestLoader().loadTestsFromTestCase(TestClass)
+    test_runner = unittest.TextTestRunner(verbosity=2)
+    test_runner.run(test_suites)

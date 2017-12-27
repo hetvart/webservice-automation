@@ -1,28 +1,34 @@
 from json import dumps, loads
+
+import sys
 import xmltodict
 from zeep import Client
 
 
 class ServiceClient(object):
+    """
+    That is a wrapper over the original zeep.Client
+    """
     def __init__(self, wsdl):
         self._client = Client(wsdl).service
 
     def __getattr__(self, item):
-        operation = self._client.__getattr__(item)
+        """
+        Returns a converted dict response body instead of xml-based string
 
-        res_dct = {}
+        :type item: zeep.client.OperationProxy
+        :return: dict
+        """
+        try:
+            operation = self._client.__getattr__(item)
 
-        def wrapper(*args):
-            result = operation(*args)
-            parsed = loads(dumps(xmltodict.parse(result)))
+            def wrapper(*args):
+                result = operation(*args)
+                if isinstance(result, str):
+                    parsed = loads(dumps(xmltodict.parse(result)))
+                    return parsed
+                return result
 
-            if item in ('GetCountries', 'GetCurrencies', 'GetCurrencyCode'):
-                return parsed["NewDataSet"]["Table"]
-
-            for dct in parsed["NewDataSet"]["Table"]:
-                for k, v in dct.items():
-                    if v not in res_dct.values():
-                        res_dct[k] = v
-            return res_dct
-
-        return wrapper
+            return wrapper
+        except AttributeError:
+            sys.exit("The service does not support the requested operation: %s." % item)
